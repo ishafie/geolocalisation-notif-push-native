@@ -20,7 +20,15 @@ public class SettingActivity extends AppCompatActivity {
 
         TextView url = findViewById(R.id.editTextURL);
         CheckBox cb = findViewById(R.id.checkBoxNotifs);
+        CheckBox filterLocalization = findViewById(R.id.activateFilterLocalization);
 
+        filterLocalization.setOnClickListener((View w) -> {
+            if (filterLocalization.isChecked()) {
+                System.out.println("CHECKING PERMISSION!");
+                filterLocalization.toggle();
+                //check permission
+            }
+        });
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
         SharedPreferences.Editor editor = sp.edit();
 
@@ -29,6 +37,7 @@ public class SettingActivity extends AppCompatActivity {
 
             editor.putString("url",url.getText().toString());
             editor.putBoolean("active", cb.isChecked());
+            editor.putBoolean("filterLocalization", filterLocalization.isChecked());
             Intent i = new Intent();
             System.out.println(sp.getAll());
             editor.apply();
