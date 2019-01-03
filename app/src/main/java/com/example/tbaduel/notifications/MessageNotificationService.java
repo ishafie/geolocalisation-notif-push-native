@@ -157,18 +157,20 @@ public class MessageNotificationService extends Service {
                 if (sharedPreferences.contains("filterLocalization") && sharedPreferences.getBoolean("filterLocalization", false) && ContextCompat.checkSelfPermission(MessageNotificationService.this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     System.out.println("Passed authorization");
                     LocationManager locationManager = (LocationManager)MessageNotificationService.this.getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
-                    Location loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER); // no effort since we use an already know location
+                    //Location loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER); // no effort since we use an already know location
                     // getLastKnownLocation is not precise enough, it could register a location from more than 10 hours ago.
-                    if (loc != null) {
+
+                    /*if (loc != null) {
                         treatMessage(currentMessage, loc);
                         return ;
-                    }
+                    }*/
                     final boolean[] treatedMessage = {false};
                     // we must ask Android to watch for the location
                     LocationListener listener = new LocationListener() {
 
                         @Override
                         public void onLocationChanged(Location location) {
+                            System.out.println("Location changed!!");
                             if (! treatedMessage[0]) { // if the message has not already been treated
                                 treatMessage(currentMessage, location);
                                 treatedMessage[0] = true;
@@ -176,18 +178,35 @@ public class MessageNotificationService extends Service {
                         }
 
                         @Override
-                        public void onStatusChanged(String provider, int status, Bundle extras) { }
+                        public void onStatusChanged(String provider, int status, Bundle extras) {
+                            System.out.println("status changed");
+                        }
 
                         @Override
-                        public void onProviderEnabled(String provider) { }
+                        public void onProviderEnabled(String provider) {
+                            System.out.println("provider enabled");
+                        }
 
                         @Override
-                        public void onProviderDisabled(String provider) { }
+                        public void onProviderDisabled(String provider) {
+                            System.out.println("provider disabled");
+                        }
                     };
+
                     locationManager.requestSingleUpdate(LocationManager.GPS_PROVIDER, listener, null /* using main thread */);
-                    handler.postDelayed( () -> { if (! treatedMessage[0])
-                        treatMessage(currentMessage, null);
-                        treatedMessage[0] = true; },  LOCATION_TIMEOUT);
+                    handler.postDelayed( () -> {
+                        System.out.println("DELAYED 1");
+                        if (! treatedMessage[0]) {
+                            System.out.println("NO TREATED MESSAGE");
+                            locationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, listener, null /* using main thread */);
+                            System.out.println("STARTING NETWORK PROVIDER");
+                            handler.postDelayed( () -> {
+                                if (!treatedMessage[0])
+                                    treatMessage(currentMessage, null);
+                                treatedMessage[0] = true;
+                            }, LOCATION_TIMEOUT);
+                        }
+                        },  LOCATION_TIMEOUT);
 
                 }
             });
