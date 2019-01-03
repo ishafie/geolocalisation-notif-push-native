@@ -1,8 +1,12 @@
 package com.example.tbaduel.notifications;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.preference.PreferenceManager;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -11,6 +15,20 @@ import android.widget.CheckBox;
 import android.widget.TextView;
 
 public class SettingActivity extends AppCompatActivity {
+
+    public static final int GEOLOCATION_REQUEST_CODE = 1;
+
+    /*@Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case GEOLOCATION_REQUEST_CODE: {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                }
+                return;
+            }
+        }
+    }*/
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -25,7 +43,11 @@ public class SettingActivity extends AppCompatActivity {
         filterLocalization.setOnClickListener((View w) -> {
             if (filterLocalization.isChecked()) {
                 System.out.println("CHECKING PERMISSION!");
-                filterLocalization.toggle();
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    // Permission is not granted
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, GEOLOCATION_REQUEST_CODE);
+                    filterLocalization.toggle();
+                }
                 //check permission
             }
         });

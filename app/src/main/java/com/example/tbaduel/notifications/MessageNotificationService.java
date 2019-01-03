@@ -1,5 +1,6 @@
 package com.example.tbaduel.notifications;
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.Service;
 import android.content.BroadcastReceiver;
@@ -7,15 +8,22 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
+import android.support.v4.content.ContextCompat;
 import android.widget.Toast;
 
 import org.json.JSONException;
@@ -29,6 +37,7 @@ import okhttp3.WebSocketListener;
 import okio.ByteString;
 
 public class MessageNotificationService extends Service {
+    public static final int LOCATION_TIMEOUT = 20000;
     public static final String START_WATCH_ACTION = "MessageNotificationService.START_WATCHING";
     public static final String STOP_WATCH_ACTION = "MessageNotificationService.STOP_WATCHING";
     OkHttpClient client = new OkHttpClient();
@@ -141,10 +150,80 @@ public class MessageNotificationService extends Service {
 
 
 
+        public void getLocation(String currentMessage) {
+            handler.post(() -> {
+                System.out.println("getLocation start");
+                SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MessageNotificationService.this);
+                if (sharedPreferences.contains("filterLocalization") && sharedPreferences.getBoolean("filterLocalization", false) && ContextCompat.checkSelfPermission(MessageNotificationService.this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                    System.out.println("Passed authorization");
+                    LocationManager locationManager = (LocationManager)MessageNotificationService.this.getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
+                    Location loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER); // no effort since we use an already know location
+                    // getLastKnownLocation is not precise enough, it could register a location from more than 10 hours ago.
+                    if (loc != null) {
+                        treatMessage(currentMessage, loc);
+                        return ;
+                    }
+                    final boolean[] treatedMessage = {false};
+                    // we must ask Android to watch for the location
+                    LocationListener listener = new LocationListener() {
+
+                        @Override
+                        public void onLocationChanged(Location location) {
+                            if (! treatedMessage[0]) { // if the message has not already been treated
+                                treatMessage(currentMessage, location);
+                                treatedMessage[0] = true;
+                            }
+                        }
+
+                        @Override
+                        public void onStatusChanged(String provider, int status, Bundle extras) { }
+
+                        @Override
+                        public void onProviderEnabled(String provider) { }
+
+                        @Override
+                        public void onProviderDisabled(String provider) { }
+                    };
+                    locationManager.requestSingleUpdate(LocationManager.GPS_PROVIDER, listener, null /* using main thread */);
+                    handler.postDelayed( () -> { if (! treatedMessage[0])
+                        treatMessage(currentMessage, null);
+                        treatedMessage[0] = true; },  LOCATION_TIMEOUT);
+
+                }
+            });
+        }
+
+        public void treatMessage(String text, Location loc) {
+            System.out.println("treatMessage text");
+
+            String sentFrom;
+            if (loc != null)
+                sentFrom = "Sent from: Lat(" + loc.getLatitude() + "), Lon(" + loc.getLongitude() + "):\n";
+            else
+                sentFrom = "";
+            handler.post(() -> {
+                try {
+                    JSONObject jsonText = new JSONObject(text);
+                    NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(MessageNotificationService.this, MainActivity.CHANNEL_ID)
+                            .setSmallIcon(R.drawable.ic_launcher_foreground)
+                            .setContentTitle("Notification app")
+                            .setContentText(sentFrom + jsonText.getString("content"))
+                            .setPriority(NotificationCompat.PRIORITY_HIGH);
+                    NotificationManagerCompat notificationManager = NotificationManagerCompat.from(MessageNotificationService.this);
+                    notificationManager.notify(notificationId, mBuilder.build());
+                    makeToast(sentFrom + jsonText.getString("content"));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+            });
+        }
+
         public void onMessage(WebSocket webSocket, String text) {
             System.out.println("onmessage text");
             System.out.println("MESSAGE: " + text);
-            handler.post(() -> {
+            getLocation(text);
+            /*handler.post(() -> {
                 try {
                     JSONObject jsonText = new JSONObject(text);
                     NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(MessageNotificationService.this, MainActivity.CHANNEL_ID)
@@ -159,7 +238,7 @@ public class MessageNotificationService extends Service {
                     e.printStackTrace();
                 }
 
-            });
+            });*/
 
         }
 
