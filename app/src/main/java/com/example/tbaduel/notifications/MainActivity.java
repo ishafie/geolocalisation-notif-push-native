@@ -14,6 +14,8 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 import static android.provider.Settings.Global.getString;
@@ -52,6 +54,13 @@ public class MainActivity extends AppCompatActivity {
         editor.apply();
         Intent serviceNotification = new Intent(this, MessageNotificationService.class);
         serviceNotification.setAction("MessageNotificationService.STOP_WATCHING");
+
+        Button settingbtn = findViewById(R.id.btnReturn);
+        settingbtn.setOnClickListener((View w)-> {
+            Intent i = new Intent(this, SettingActivity.class);
+            startActivityForResult(i,1);
+        });
+
         Intent i = new Intent(this, SettingActivity.class);
         startActivityForResult(i,1);
 

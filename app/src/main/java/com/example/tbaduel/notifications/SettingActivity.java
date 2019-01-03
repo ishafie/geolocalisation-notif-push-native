@@ -32,6 +32,10 @@ public class SettingActivity extends AppCompatActivity {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
         SharedPreferences.Editor editor = sp.edit();
 
+        boolean active = sp.getBoolean("active",false);
+        if (active){
+            cb.setChecked(true);
+        }
         Button btn = findViewById(R.id.btnValidate);
         btn.setOnClickListener((View w)-> {
 
