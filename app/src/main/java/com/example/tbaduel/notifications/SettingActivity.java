@@ -55,7 +55,11 @@ public class SettingActivity extends AppCompatActivity {
         SharedPreferences.Editor editor = sp.edit();
 
         boolean active = sp.getBoolean("active",false);
+        boolean geoActive = sp.getBoolean("filterLicalization", false);
         if (active){
+            cb.setChecked(true);
+        }
+        if  (geoActive){
             cb.setChecked(true);
         }
         Button btn = findViewById(R.id.btnValidate);

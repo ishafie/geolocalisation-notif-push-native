@@ -30,6 +30,7 @@
             android:permission=""
             tools:ignore="ExportedService" />
 
+        <activity android:name=".SenderActivity"></activity>
     </application>
 
 </manifest>

@@ -55,10 +55,16 @@ public class MainActivity extends AppCompatActivity {
         Intent serviceNotification = new Intent(this, MessageNotificationService.class);
         serviceNotification.setAction("MessageNotificationService.STOP_WATCHING");
 
-        Button settingbtn = findViewById(R.id.btnReturn);
-        settingbtn.setOnClickListener((View w)-> {
+        Button btnSetting = findViewById(R.id.btnReturn);
+        btnSetting.setOnClickListener((View w)-> {
             Intent i = new Intent(this, SettingActivity.class);
             startActivityForResult(i,1);
+        });
+
+        Button btnSendActivity = findViewById(R.id.btnSendActivity);
+        btnSendActivity.setOnClickListener((View w) ->{
+          Intent i = new Intent(this, SenderActivity.class);
+          startActivityForResult(i,1);
         });
 
         Intent i = new Intent(this, SettingActivity.class);
