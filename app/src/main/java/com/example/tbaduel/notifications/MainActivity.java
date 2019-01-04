@@ -79,6 +79,11 @@ public class MainActivity extends AppCompatActivity {
                 serviceNotification.setAction(MessageNotificationService.START_WATCH_ACTION);
                 startService(serviceNotification);
             }
+            if (sharedPreferences.contains("active") && sharedPreferences.contains("url")
+                    && !sharedPreferences.getBoolean("active", false) && serviceNotification.getAction().equals("MessageNotificationService.START_WATCHING")) {
+                serviceNotification.setAction(MessageNotificationService.STOP_WATCH_ACTION);
+                startService(serviceNotification);
+            }
         });
     }
 

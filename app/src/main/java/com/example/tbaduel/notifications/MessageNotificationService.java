@@ -109,7 +109,7 @@ public class MessageNotificationService extends Service {
                 this.startWatching(sp.getString("url", "undefined"));
                 break;
             case STOP_WATCH_ACTION:
-                this.ws.close(1000, "Closing...");
+                this.ws.cancel();
                 break;
         }
 
@@ -118,6 +118,7 @@ public class MessageNotificationService extends Service {
 
     public void startWatching(String url) {
         // the URL must start with ws:// or wss:// (and not http:// or https://)
+        System.out.println("url: " + url);
         Request request = new Request.Builder().url(url).build();
         MessageListener listener = new MessageListener(this);
         ws = client.newWebSocket(request, listener);
@@ -154,16 +155,21 @@ public class MessageNotificationService extends Service {
             handler.post(() -> {
                 System.out.println("getLocation start");
                 SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MessageNotificationService.this);
+                if (sharedPreferences.contains("filterLocalization") && !sharedPreferences.getBoolean("filterLocalization", false)) {
+                    treatMessage(currentMessage, null);
+                    return ;
+                }
                 if (sharedPreferences.contains("filterLocalization") && sharedPreferences.getBoolean("filterLocalization", false) && ContextCompat.checkSelfPermission(MessageNotificationService.this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     System.out.println("Passed authorization");
                     LocationManager locationManager = (LocationManager)MessageNotificationService.this.getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
-                    //Location loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER); // no effort since we use an already know location
-                    // getLastKnownLocation is not precise enough, it could register a location from more than 10 hours ago.
+                    Location loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER); // no effort since we use an already know location
+                    // getLastKnownLocation is not precise enough, it could register a location from more than 10 hours ago if its taken from GPS_PROVIDER
+                    // if it's taken from NETWORK_PROVIDER then it's okay.
 
-                    /*if (loc != null) {
+                    if (loc != null) {
                         treatMessage(currentMessage, loc);
-                        return ;
-                    }*/
+                        return;
+                    }
                     final boolean[] treatedMessage = {false};
                     // we must ask Android to watch for the location
                     LocationListener listener = new LocationListener() {
@@ -212,25 +218,39 @@ public class MessageNotificationService extends Service {
             });
         }
 
-        public void treatMessage(String text, Location loc) {
+        private double getDistanceBetweenServerAndMe(Location loc, JSONObject jsonText) throws JSONException {
+            System.out.println("My latitude: " + loc.getLatitude());
+            System.out.println("My longitude: " + loc.getLongitude());
+            System.out.println("Server latitude: " + jsonText.getDouble("latitude"));
+            System.out.println("Server longitude: " + jsonText.getDouble("longitude"));
+            double latA = loc.getLatitude() * Math.PI / 180.0;
+            double latB = jsonText.getDouble("latitude") * Math.PI / 180.0;
+            double lonA = loc.getLongitude() * Math.PI / 180.0;
+            double lonB = jsonText.getDouble("longitude") * Math.PI / 180.0;
+            return (6371 * Math.acos(Math.sin(latA) * Math.sin(latB) + Math.cos(latA) * Math.cos(latB) * Math.cos(lonA - lonB)));
+        }
+
+        private void treatMessage(String text, Location loc) {
             System.out.println("treatMessage text");
 
-            String sentFrom;
-            if (loc != null)
-                sentFrom = "Sent from: Lat(" + loc.getLatitude() + "), Lon(" + loc.getLongitude() + "):\n";
-            else
-                sentFrom = "";
             handler.post(() -> {
                 try {
+
                     JSONObject jsonText = new JSONObject(text);
-                    NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(MessageNotificationService.this, MainActivity.CHANNEL_ID)
-                            .setSmallIcon(R.drawable.ic_launcher_foreground)
-                            .setContentTitle("Notification app")
-                            .setContentText(sentFrom + jsonText.getString("content"))
-                            .setPriority(NotificationCompat.PRIORITY_HIGH);
-                    NotificationManagerCompat notificationManager = NotificationManagerCompat.from(MessageNotificationService.this);
-                    notificationManager.notify(notificationId, mBuilder.build());
-                    makeToast(sentFrom + jsonText.getString("content"));
+                    double dist = 0;
+                    if (loc != null) {
+                        dist = getDistanceBetweenServerAndMe(loc, jsonText);
+                    }
+                    if (loc == null || dist < (jsonText.getDouble("radius") / 1000)) {
+                        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(MessageNotificationService.this, MainActivity.CHANNEL_ID)
+                                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                                .setContentTitle("Notification app")
+                                .setContentText(jsonText.getString("content"))
+                                .setPriority(NotificationCompat.PRIORITY_HIGH);
+                        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(MessageNotificationService.this);
+                        notificationManager.notify(notificationId, mBuilder.build());
+                        makeToast(jsonText.getString("content"));
+                    }
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -239,26 +259,13 @@ public class MessageNotificationService extends Service {
         }
 
         public void onMessage(WebSocket webSocket, String text) {
-            System.out.println("onmessage text");
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MessageNotificationService.this);
+            if (!sharedPreferences.getBoolean("active", false)) {
+                webSocket.close(1000, "Closing...");
+                return ;
+            }
             System.out.println("MESSAGE: " + text);
             getLocation(text);
-            /*handler.post(() -> {
-                try {
-                    JSONObject jsonText = new JSONObject(text);
-                    NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(MessageNotificationService.this, MainActivity.CHANNEL_ID)
-                            .setSmallIcon(R.drawable.ic_launcher_foreground)
-                            .setContentTitle("Notification app")
-                            .setContentText(jsonText.getString("content"))
-                                    .setPriority(NotificationCompat.PRIORITY_HIGH);
-                    NotificationManagerCompat notificationManager = NotificationManagerCompat.from(MessageNotificationService.this);
-                    notificationManager.notify(notificationId, mBuilder.build());
-                    makeToast(jsonText.getString("content"));
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-
-            });*/
-
         }
 
         public void onMessage(WebSocket webSocket, ByteString bytes) {
@@ -267,13 +274,17 @@ public class MessageNotificationService extends Service {
         }
 
         public void onClosing(WebSocket webSocket, int code, String reason) {
-            System.out.println("onclosing");
-
-            webSocket.close(code, reason);
+            System.out.println("Closing...");
+            System.out.println(code);
+            if (code == 1000) {
+                System.out.println("Server closed successfully.");
+            } else {
+                System.out.println("Couldn't close server properly.");
+            }
         }
 
         public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-            System.out.println("onfailure");
+            System.out.println("Failure !");
 
             webSocket.cancel();
             t.printStackTrace();
