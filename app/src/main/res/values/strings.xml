@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">Notifications</string>
+    <string name="urlLabel">URL</string>
+    <string name="passwordLabel">Password</string>
+    <string name="latLabel">Lat.</string>
+    <string name="longLabel">Long.</string>
+    <string name="radiusLabel">Radius (meters)</string>
+    <string name="messageLabel">Message</string>
+    <string name="notification_app">Notification app</string>
+    <string name="back_to_prefs">Back to prefs</string>
+    <string name="send_notification">Send notification ...</string>
+    <string name="valider">Valider</string>
+    <string name="activate_filter_geo">Activer le filtre par position géographique</string>
+    <string name="activate_notifications">Activer les notifications</string>
 </resources>

@@ -16,7 +16,7 @@
         android:layout_marginEnd="8dp"
         android:layout_marginRight="8dp"
         android:checked="false"
-        android:text="Activer les notifications"
+        android:text="@string/activate_notifications"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/activateFilterLocalization" />
@@ -48,7 +48,7 @@
         android:layout_marginEnd="8dp"
         android:layout_marginRight="8dp"
         android:layout_marginBottom="16dp"
-        android:text="Valider"
+        android:text="@string/valider"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
@@ -65,7 +65,7 @@
         android:layout_marginTop="196dp"
         android:layout_marginEnd="8dp"
         android:layout_marginRight="8dp"
-        android:text="Activer le filtre par position géographique"
+        android:text="@string/activate_filter_geo"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/editTextURL" />
